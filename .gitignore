@@ -1,5 +1,7 @@
-# idea
+# output
+*.csv
 
+# idea
 .idea/
 
 # Byte-compiled / optimized / DLL files
