@@ -12,19 +12,23 @@ class Cities(scrapy.Spider):
 
     custom_settings = {
         'CONCURRENT_REQUESTS': '1',
+        'USER-AGENT': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:62.0) Gecko/20100101 Firefox/62.0',
         'DOWNLOAD_DELAY':'3',
         'COOKIES_ENABLED':True,
         'HTTPERROR_ALLOWED_CODES':[404],
         'FEED_EXPORTERS': {
             'csv': 'scrapy.exporters.CsvItemExporter',},
         'FEED_FORMAT' : 'csv',
-        'FEED_URI' : 'output.csv'
+        'FEED_URI' : 'output.csv',
+        'DEFAULT_REQUEST_HEADERS': {
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'fr,fr-FR;q=0.8,en-US;q=0.5,en;q=0.3'},
     }
 
     start_urls = ['https://www.leboncoin.fr/ventes_immobilieres/offres/ile_de_france/']
     allowed_domains = ['leboncoin.fr']
 
-    ua = 
+    ua = 'Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:62.0) Gecko/20100101 Firefox/62.0'
 
     def __init__(self, aDate = pendulum.today()):
         super(Cities, self).__init__()
@@ -37,18 +41,9 @@ class Cities(scrapy.Spider):
         return soup.get_text()
 
     def start_requests(self):
-        cf_requests = []
-        user_agent = self.ua.random
-        self.logger.info("RANDOM user_agent = %s", user_agent)
         for url in self.start_urls:
-            token , agent = cfscrape.get_tokens(url,user_agent)
-            self.logger.info("token = %s", token)
-            self.logger.info("agent = %s", agent)
-
-            cf_requests.append(scrapy.Request(url=url,
-                                              cookies= token,
-                                              headers={'User-Agent': agent}))
-        return cf_requests
+            yield scrapy.Request(url=url)
 
     def parse(self, response):
+        print(response)
 
