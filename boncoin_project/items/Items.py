@@ -7,6 +7,7 @@
 
 import scrapy
 
-class COMItem(scrapy.Item):
-    id = scrapy.Field()
-    place = scrapy.Field()
+class Annonces(scrapy.Item):
+    titre = scrapy.Field()
+    prix = scrapy.Field()
+    url = scrapy.Field()

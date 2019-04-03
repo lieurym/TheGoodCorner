@@ -16,8 +16,9 @@ class Cities(scrapy.Spider):
         'COOKIES_ENABLED':True,
         'HTTPERROR_ALLOWED_CODES':[404],
         'FEED_EXPORTERS': {
-            'csv': 'scrapy.exporters.CsvItemExporter',},
+            'csv': 'scrapy.exporters.CsvItemExporter'},
         'FEED_FORMAT' : 'csv',
+        'FEED_EXPORT_ENCODING' : 'utf-8',
         'FEED_URI' : 'output.csv',
         'DEFAULT_REQUEST_HEADERS': {
         'User-agent' : 'Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:62.0) Gecko/20100101 Firefox/62.0',
@@ -25,7 +26,7 @@ class Cities(scrapy.Spider):
         'Accept-Language': 'fr,fr-FR;q=0.8,en-US;q=0.5,en;q=0.3'},
     }
 
-    start_urls = ['https://www.leboncoin.fr/ventes_immobilieres/offres/ile_de_france/']
+    start_urls = ['https://www.leboncoin.fr/recherche/?category=9&locations=Paris_75013']
     allowed_domains = ['leboncoin.fr']
 
     ua = 'Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:62.0) Gecko/20100101 Firefox/62.0'
@@ -45,10 +46,30 @@ class Cities(scrapy.Spider):
             yield scrapy.Request(url=url, callback = self.parse)
 
     def parse(self, response):
-        extra = response.xpath('//*[@class="_2tubl"]')
-        extra1 = extra.xpath('//span[@itemprop="name"]/text()').extract()
-        for i in extra1:
-            print(i)
+        extra = response.xpath('//a[@class="clearfix trackable"]/@href').extract()
+        for i in extra:
+            url2 = "https://www.leboncoin.fr"+i
+            annonce = Annonces()
+            annonce['url'] = url2
+            yield scrapy.Request(url=url2, callback = self.parse_page, meta={"annonce":annonce})
+
+    def parse_page(self, response):
+        annonce = response.meta['annonce']
+        annonce['titre'] = ' '.join(response.xpath('//h1[@class ="_1KQme"]/text()').extract()).replace(";"," ")
+        annonce['prix'] = response.xpath('//span[@class ="_1F5u3"]/text()').extract()[0]
+        yield annonce
+
+
+        #extra0 = extra.extract()
+        #extra1 = extra.xpath('./span[@itemprop="href"]/text()').extract()
+
+        #print(extra0[1])
+        #print(len(extra0))
+        #print("------------------------------------------------------")
+        #print(extra1[39])
+        #print(len(extra1))
+
+
 
 
 
