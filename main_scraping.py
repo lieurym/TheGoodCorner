@@ -1,5 +1,7 @@
 import scrapy
 
+
+# twisted est la librairie qui permet de lancer les spiders
 from twisted.internet import reactor, defer
 from scrapy.crawler import CrawlerRunner
 from scrapy.utils.log import configure_logging
@@ -12,11 +14,15 @@ from boncoin_project.spiders import Cities
 configure_logging()
 runner = CrawlerRunner()
 
+
+# on définit un rurner (crawl) qui va lancer les spiders
+
 @defer.inlineCallbacks
 def crawl():
     yield runner.crawl(Cities.Cities)
     #yield runner.crawl(another spyder)
     reactor.stop()
 
+# pour les spiders, on peut définir un fichier.csg
 crawl()
 reactor.run()

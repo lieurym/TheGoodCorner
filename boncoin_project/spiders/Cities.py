@@ -21,10 +21,10 @@ class Cities(scrapy.Spider):
         'FEED_URI' : 'output.csv'
     }
 
-    start_urls = ['https://www.meilleursagents.com/prix-immobilier/']
-    allowed_domains = ['meilleursagents.com']
+    start_urls = ['https://www.leboncoin.fr/ventes_immobilieres/offres/ile_de_france/']
+    allowed_domains = ['leboncoin.fr']
 
-    ua = UserAgent()
+    ua = 
 
     def __init__(self, aDate = pendulum.today()):
         super(Cities, self).__init__()
@@ -50,38 +50,5 @@ class Cities(scrapy.Spider):
                                               headers={'User-Agent': agent}))
         return cf_requests
 
-
-    def build_api_call(self,number):
-        query = 'https://geo.meilleursagents.com/geo/v1/cities/{communeNumber}?fields=viewport,slug'.format(communeNumber=number)
-        return query
-
-    ###################################
-    # MAIN PARSE
-    ####################################
-
     def parse(self, response):
-        #lCom = list(range(135,38775))
-        lCom = list(range(135, 300))
 
-        random.shuffle(lCom)
-
-        for c in lCom:
-            yield scrapy.Request(self.build_api_call(c),
-                                 headers={'X-Requested-With': 'XMLHttpRequest',
-                                          'Content-Type': 'application/json; charset=UTF-8'},
-                                 callback=self.parse_commune,meta={'id': c})
-
-    def parse_commune(self,response):
-        meta = response.meta
-        if response.status == 404:
-            #self.seen_404 = True
-            print("END OF WORLD")
-            item = COMItem()
-            item['id'] = meta['id']
-            item['place'] = "NA"
-        else:
-            item = COMItem()
-            dataJson = json.loads(response.body_as_unicode())
-            item['id'] = dataJson['response']['place']['id']
-            item['place'] = dataJson['response']['place']['slug']
-        yield item
