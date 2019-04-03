@@ -42,8 +42,15 @@ class Cities(scrapy.Spider):
 
     def start_requests(self):
         for url in self.start_urls:
-            yield scrapy.Request(url=url)
+            yield scrapy.Request(url=url, callback = self.parse)
 
     def parse(self, response):
-        print(response)
+        extra = response.xpath('//*[@class="_2tubl"]')
+        extra1 = extra.xpath('//span[@itemprop="name"]/text()').extract()
+        for i in extra1:
+            print(i)
+
+
+
+
 
