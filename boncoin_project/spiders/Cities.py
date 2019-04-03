@@ -12,7 +12,7 @@ class Cities(scrapy.Spider):
 
     custom_settings = {
         'CONCURRENT_REQUESTS': '1',
-        'DOWNLOAD_DELAY':'3',
+        'DOWNLOAD_DELAY':'2',
         'COOKIES_ENABLED':True,
         'HTTPERROR_ALLOWED_CODES':[404],
         'FEED_EXPORTERS': {
@@ -43,7 +43,14 @@ class Cities(scrapy.Spider):
 
     def start_requests(self):
         for url in self.start_urls:
-            yield scrapy.Request(url=url, callback = self.parse)
+            yield scrapy.Request(url=url, callback = self.parse_page)
+
+    def parse_page(self, response):
+        # recupere le nombre d annonce avec un xpath pour en faire un modulo pour avoir le nombre de pages
+         for p in range(1,3):
+            urls = 'https://www.leboncoin.fr/recherche/?category=9&locations=Paris_75013&page='+ str(p)
+            yield scrapy.Request(url = urls, callback = self.parse, priority=1)
+
 
     def parse(self, response):
         extra = response.xpath('//a[@class="clearfix trackable"]/@href').extract()
@@ -51,12 +58,14 @@ class Cities(scrapy.Spider):
             url2 = "https://www.leboncoin.fr"+i
             annonce = Annonces()
             annonce['url'] = url2
-            yield scrapy.Request(url=url2, callback = self.parse_page, meta={"annonce":annonce})
+            print(i)
+            yield scrapy.Request(url=url2, callback = self.parse_annonce, meta={"annonce":annonce})
 
-    def parse_page(self, response):
+    def parse_annonce(self, response):
         annonce = response.meta['annonce']
         annonce['titre'] = ' '.join(response.xpath('//h1[@class ="_1KQme"]/text()').extract()).replace(";"," ")
         annonce['prix'] = response.xpath('//span[@class ="_1F5u3"]/text()').extract()[0]
+        annonce['time'] = self.aDate.today()
         yield annonce
 
 

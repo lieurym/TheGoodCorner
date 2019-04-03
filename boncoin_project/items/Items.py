@@ -11,3 +11,4 @@ class Annonces(scrapy.Item):
     titre = scrapy.Field()
     prix = scrapy.Field()
     url = scrapy.Field()
+    time = scrapy.Field()
