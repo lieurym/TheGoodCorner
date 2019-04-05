@@ -15,7 +15,7 @@ configure_logging()
 runner = CrawlerRunner()
 
 
-# on définit un rurner (crawl) qui va lancer les spiders
+# on definit un runer (crawl) qui va lancer les spiders
 
 @defer.inlineCallbacks
 def crawl():

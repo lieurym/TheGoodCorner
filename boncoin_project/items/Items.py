@@ -8,7 +8,13 @@
 import scrapy
 
 class Annonces(scrapy.Item):
+    #permet de presenter les informations scrappees
     titre = scrapy.Field()
     prix = scrapy.Field()
     url = scrapy.Field()
     time = scrapy.Field()
+    #descr = scrapy.Field()
+    honoraires = scrapy.Field()
+    typebien = scrapy.Field()
+    nbpieces = scrapy.Field()
+    surface = scrapy.Field()
