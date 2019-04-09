@@ -18,3 +18,10 @@ class Annonces(scrapy.Item):
     typebien = scrapy.Field()
     nbpieces = scrapy.Field()
     surface = scrapy.Field()
+    classenergie = scrapy.Field()
+    ges = scrapy.Field()
+    dhannonce = scrapy.Field()
+    annonced = scrapy.Field()
+    codepost = scrapy.Field()
+    ville = scrapy.Field()
+
