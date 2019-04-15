@@ -3,3 +3,5 @@ fake-useragent
 beautifulsoup4
 pendulum
 scrapy
+csvkit
+pandas

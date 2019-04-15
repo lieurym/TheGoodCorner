@@ -6,6 +6,8 @@ import pendulum
 import json
 import random
 from boncoin_project.items.Items import *
+import csvkit
+import pandas as pd
 
 class Cities(scrapy.Spider):
     name = "cities"
@@ -23,7 +25,7 @@ class Cities(scrapy.Spider):
         #permet de specifier l'encodage du fichier en sortie
         'FEED_EXPORT_ENCODING' : 'utf-8',
         # nomme le fichier CSV en sortie
-        'FEED_URI' : 'ParisScrap2.csv',
+        'FEED_URI' : 'testmultiregionOUTOUT.csv',
         'DEFAULT_REQUEST_HEADERS': {
         'User-agent' : 'Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:62.0) Gecko/20100101 Firefox/62.0',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -53,11 +55,41 @@ class Cities(scrapy.Spider):
 
     def parse_page(self, response):
         # recupere le nombre d annonce avec un xpath pour en faire un modulo pour avoir le nombre de pages
-         for p in range(1,7):
-             # modifier l'URL (en prenant en compte le "&page=" pour avoir l'extraction sur le nombre de pages voulues
-             # la boucle permet de mettre un nombre (de n a m) en fin d'URL specifiant le numéro de page qu'on veut scraper
-            urls = 'https://www.leboncoin.fr/recherche/?category=9&locations=d_75&real_estate_type=1,2,3&page='+ str(p)
-            yield scrapy.Request(url = urls, callback = self.parse, priority=1)
+        # on importe tout d'abord le CSV qu'on veut (celui avec les éléments qui nous intéressent pour construire l'URL
+         csvcible1 = pd.read_csv('TOT_testmidi.csv')
+        # ensuite, pour chaque ligne ("NomCommune_CodePostal" dans la colonne qui nous interesse, on demande au programme
+        # de compléter l'URL en immisçant au milieu "ligne" et en rajoutant le numéro de page à la fin
+         for ligne1 in csvcible1.loc[: ,"ID_URL"] :
+             print(ligne1)
+             #pagemax = int("".join(response.xpath('//span[@class="_2ilNG"]/text()').extract()).replace(" ","")[0])
+             #print(pagemax)
+             urllen = 'https://www.leboncoin.fr/recherche/?category=9&locations=' + ligne1 + '&real_estate_type=1,2'
+             print(urllen)
+             yield scrapy.Request(url = urllen, callback= self.parse_nbpages, meta={"ligne1":ligne1})
+
+
+    def parse_nbpages (self, response):
+        # on récupère le nom de la commune de la fonction 'parse_page'
+            ligne1 = response.meta['ligne1']
+        # on concatene pour chaque commune le nombre d'annonces qui est dans un /span
+            nbannonces = str(' '.join(response.xpath('//p/span[@class="_2ilNG"]/text()').extract()).replace(" ", ""))
+        # on passe le nb d'annonce en integrer pour faciliter le calcul plus bas
+            nbpages = int(nbannonces)
+        # petit test pour voir si on a bien le bon nombre d'annonces
+            print(nbpages)
+        # on divise le nombre d'annonce total par le nombre d'annonces par page (35) + 2 pour aussi avoir les annonces
+        # sur la dernière page, et aussi être une page au dessus (au cas où)
+            nbpages = round(nbpages/35)+2
+            print(nbpages)
+        # et on lance une boucle pour récupérer, dans chaque page, le bon nombre d'URL qui seront utilisées dans la fonction
+        # suivante ('parse')
+            for p in range(1,nbpages):
+                print(p)
+                    # modifier l'URL (en prenant en compte le "&page=" pour avoir l'extraction sur le nombre de pages voulues)
+                    # la boucle permet de mettre un nombre (de n a x) en fin d'URL specifiant le numéro de page qu'on veut scraper
+                    # en ajoutant "ligne" on glisse le "NomCommune_CodePostal" récupéré plus haut
+                urls = 'https://www.leboncoin.fr/recherche/?category=9&locations=' + ligne1 + '&real_estate_type=1,2'+'&page='+ str(p)
+                yield scrapy.Request(url = urls, callback = self.parse, priority=1)
 
 
     def parse(self, response):
@@ -80,60 +112,63 @@ class Cities(scrapy.Spider):
         annonce = response.meta['annonce']
 
         # on récupère ici le titre de l'annonce
-        annonce['titre'] = ' '.join(response.xpath('//h1[@class ="_1KQme"]/text()').extract()).replace(";"," ")
+        annonce['annoncet'] = ' '.join(response.xpath('//h1[@class ="_1KQme"]/text()').extract()).replace(";"," ")
 
         # on récupère ici le prix de l'annonce
-        annonce['prix'] = response.xpath('//span[@class ="_1F5u3"]/text()').extract()[0]
+        annonce['logprix'] = response.xpath('//span[@class ="_1F5u3"]/text()').extract()[0]
 
         # si on veut récupèrer la description complète de l'annonce (texte parfois assez long...)
         #annonce['descr'] = ' '.join(response.xpath('//span[@class ="content-CxPmi"]/text()').extract()).replace(";"," ")
         # on récupère l'heure et la date auxquelles on a scrappé l'annonce (sorte d'ID de temps en gros)
-        annonce['time'] = self.aDate.today()
+        #annonce['scraptime'] = self.aDate.today()
+        annonce['scrapdate'] = self.aDate.today().to_date_string().replace("-","/")
+        annonce['scrapheure'] = self.aDate.today().to_time_string() #.replace(":","/") (SI BESOIN)
 
         # plus bas on récupère les infos d'une même div contenant à la fois le fait qu'il y ait ou non des honoraires à prendre
         # en compte, la surface du bien, le nombre de pièces du bien, et le type de bien (maison, appartement, etc).
         # si il y a des honoraires pour agent a prendre en compte
-        annonce['honoraires'] = response.xpath('//div[@data-qa-id="criteria_item_fai_included"]/div/div[2]/text()').extract()
+        annonce['loghonoraires'] = response.xpath('//div[@data-qa-id="criteria_item_fai_included"]/div/div[2]/text()').extract()
 
         # quel type de bien (appartement, maison, terrain)
-        annonce['typebien'] = response.xpath('//div[@data-qa-id="criteria_item_real_estate_type"]/div/div[2]/text()').extract()
+        annonce['logtypebien'] = response.xpath('//div[@data-qa-id="criteria_item_real_estate_type"]/div/div[2]/text()').extract()
 
         # le nombre de pièces du bien
-        annonce['nbpieces'] = response.xpath('//div[@data-qa-id="criteria_item_rooms"]/div/div[2]/text()').extract()
+        annonce['lognbpieces'] = response.xpath('//div[@data-qa-id="criteria_item_rooms"]/div/div[2]/text()').extract()
 
-        # la surface en m2 du bien (essayer de virer le "m2" à la fin de chaque ligne)
-        annonce['surface'] = response.xpath('//div[@data-qa-id="criteria_item_square"]/div/div[2]/text()').extract()
+        # la surface en m2 du bien (en virant le "m2" à la fin de chaque ligne)
+        annonce['logsurface'] = ' '.join(response.xpath('//div[@data-qa-id="criteria_item_square"]/div/div[2]/text()').extract())[:-2]
 
         # on essaye ici de récupérer la classe d'energie du bien immobilier ('A','B','C','D','E','F' ou 'G') en se basant sur
         # la partie de la div mise en exergue quand cette classe doit ressortir (en plus grand) = "_1sd0z"
         # apparemment xpath boucle automatiquement, donc pas besoin de rechercher dans chaque div. On essaye avec ça (et ça marche !):
         # la classe d'energie du bien ("contains" permet de récupérer la div avec l'ID qui nous intéresse):
-        annonce['classenergie'] = response.xpath('//div[@class="_2Fdg- _1kx3G"]/div[contains(@class,"_1sd0z")]/text()').extract()
+        annonce['energieclass'] = response.xpath('//div[@class="_2Fdg- _1kx3G"]/div[contains(@class,"_1sd0z")]/text()').extract()
 
         # le GES (Gaz a Effet de Serre) emis par le bien immobilier ("contains" permet de récupérer la div avec l'ID qui nous intéresse):
-        annonce['ges'] = response.xpath('//div[@class="_2Fdg- QGdfG"]/div[contains(@class,"_1sd0z")]/text()').extract()
+        annonce['energieges'] = response.xpath('//div[@class="_2Fdg- QGdfG"]/div[contains(@class,"_1sd0z")]/text()').extract()
 
         # ici on récupère la date et l'heure auxquelles l'annonce a été postée
-        annonce['dhannonce'] = ' '.join(response.xpath('//div[@data-qa-id="adview_date"]/text()').extract()).replace("à"," ")
+        #annonce['dhannonce'] = ' '.join(response.xpath('//div[@data-qa-id="adview_date"]/text()').extract()).replace("à"," ")
 
         # on essaye de récupérer juste l'heure de l'annonce MARCHE PAS POUR L'INSTANT
-        #annonce['annonceh'] = response.xpath('//div[@data-qa-id="adview_date"]/text[-5;-0]()').extract()
+        annonce['annonceh'] = ' '.join(response.xpath('//div[@data-qa-id="adview_date"]/text()').extract())[-5:]
 
         # et on essaye de récupérer juste la date de l'annonce MARCHE PAS POUR L'INSTANT
-        #annonce['annonced'] = response.xpath('//div[@data-qa-id="adview_date"]/text()').extract()[0]
+        annonce['annonced'] = ' '.join(response.xpath('//div[@data-qa-id="adview_date"]/text()').extract())[:10]
 
         # on récupère le nom de la commune (il faut le faire en MAJ ou UPPERCASE pour le comparer ensuite à la BDD INSEE)
         # (bon c'est assez laid mais ça marche)
-        annonce['ville'] = response.xpath('//div[@data-qa-id="adview_location_informations"]//text()').extract()[0]\
+        annonce['logville'] = response.xpath('//div[@data-qa-id="adview_location_informations"]//text()').extract()[0]\
         .replace("á", "a").replace("à", "a").replace("â", "a").replace("ä", "a") \
         .replace("é", "e").replace("è", "e").replace("ê", "e").replace("ë", "e") \
         .replace("í", "i").replace("ì", "i").replace("î", "i").replace("ï", "i") \
         .replace("ó", "o").replace("ò", "o").replace("ô", "o").replace("ö", "o") \
         .replace("ú", "u").replace("ù", "u").replace("û", "u").replace("ü", "u") \
-        .replace("'", " ").replace("-", " ").upper()
+        .replace("'", " ").replace("-", " ").upper().replace("SAINT","ST").replace("SAINTS","ST")
 
         # et on récupère le code postal de la commune, a ne pas confondre avec le code INSEE de la commune
-        annonce['codepost'] = response.xpath('//div[@data-qa-id="adview_location_informations"]//text()').extract()[2]
+        annonce['logcodepost'] = str(response.xpath('//div[@data-qa-id="adview_location_informations"]//text()').extract()[2]).zfill(5)
+        #annonce['logcodepost'] = str(annonce['logcodepost'])
 
 
         yield annonce
