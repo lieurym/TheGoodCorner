@@ -25,7 +25,7 @@ class Cities(scrapy.Spider):
         #permet de specifier l'encodage du fichier en sortie
         'FEED_EXPORT_ENCODING' : 'utf-8',
         # nomme le fichier CSV en sortie
-        'FEED_URI' : 'testmultiregionOUTOUT.csv',
+        'FEED_URI' : 'Test_trous_OUT.csv',
         'DEFAULT_REQUEST_HEADERS': {
         'User-agent' : 'Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:62.0) Gecko/20100101 Firefox/62.0',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -56,13 +56,11 @@ class Cities(scrapy.Spider):
     def parse_page(self, response):
         # recupere le nombre d annonce avec un xpath pour en faire un modulo pour avoir le nombre de pages
         # on importe tout d'abord le CSV qu'on veut (celui avec les éléments qui nous intéressent pour construire l'URL
-         csvcible1 = pd.read_csv('TOT_testmidi.csv')
+         csvcible1 = pd.read_csv('Test_trous_IN.csv')
         # ensuite, pour chaque ligne ("NomCommune_CodePostal" dans la colonne qui nous interesse, on demande au programme
         # de compléter l'URL en immisçant au milieu "ligne" et en rajoutant le numéro de page à la fin
-         for ligne1 in csvcible1.loc[: ,"ID_URL"] :
+         for ligne1 in csvcible1.loc[: ,"ID_URL"].replace("É", "E").replace("' ", "'").replace(" '","'"):
              print(ligne1)
-             #pagemax = int("".join(response.xpath('//span[@class="_2ilNG"]/text()').extract()).replace(" ","")[0])
-             #print(pagemax)
              urllen = 'https://www.leboncoin.fr/recherche/?category=9&locations=' + ligne1 + '&real_estate_type=1,2'
              print(urllen)
              yield scrapy.Request(url = urllen, callback= self.parse_nbpages, meta={"ligne1":ligne1})
@@ -150,10 +148,10 @@ class Cities(scrapy.Spider):
         # ici on récupère la date et l'heure auxquelles l'annonce a été postée
         #annonce['dhannonce'] = ' '.join(response.xpath('//div[@data-qa-id="adview_date"]/text()').extract()).replace("à"," ")
 
-        # on essaye de récupérer juste l'heure de l'annonce MARCHE PAS POUR L'INSTANT
+        # on essaye de récupérer juste l'heure de l'annonce
         annonce['annonceh'] = ' '.join(response.xpath('//div[@data-qa-id="adview_date"]/text()').extract())[-5:]
 
-        # et on essaye de récupérer juste la date de l'annonce MARCHE PAS POUR L'INSTANT
+        # et on essaye de récupérer juste la date de l'annonce
         annonce['annonced'] = ' '.join(response.xpath('//div[@data-qa-id="adview_date"]/text()').extract())[:10]
 
         # on récupère le nom de la commune (il faut le faire en MAJ ou UPPERCASE pour le comparer ensuite à la BDD INSEE)
@@ -164,7 +162,9 @@ class Cities(scrapy.Spider):
         .replace("í", "i").replace("ì", "i").replace("î", "i").replace("ï", "i") \
         .replace("ó", "o").replace("ò", "o").replace("ô", "o").replace("ö", "o") \
         .replace("ú", "u").replace("ù", "u").replace("û", "u").replace("ü", "u") \
-        .replace("'", " ").replace("-", " ").upper().replace("SAINT","ST").replace("SAINTS","ST")
+        .replace("'", " ").replace("-", " ").replace("É", "E").upper().replace(" SAINT "," ST ").replace(" SAINTS "," ST ") \
+        .replace("-SAINT ", "-ST ").replace("-SAINTS ", "-ST ").replace(" SAINT-"," ST-").replace(" SAINTS-"," ST-") \
+        .replace("-SAINT-", "-ST-").replace("-SAINTS-", "-ST-")
 
         # et on récupère le code postal de la commune, a ne pas confondre avec le code INSEE de la commune
         annonce['logcodepost'] = str(response.xpath('//div[@data-qa-id="adview_location_informations"]//text()').extract()[2]).zfill(5)
