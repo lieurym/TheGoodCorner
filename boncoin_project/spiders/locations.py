@@ -1,5 +1,3 @@
-
-
 from bs4 import BeautifulSoup
 import scrapy
 import cfscrape
@@ -13,9 +11,8 @@ import pandas as pd
 from selenium import webdriver
 from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
 
-
-class Cities(scrapy.Spider):
-    name = "cities"
+class Locations(scrapy.Spider):
+    name = "locations"
 
     custom_settings = {
         'CONCURRENT_REQUESTS': '1',
@@ -30,28 +27,25 @@ class Cities(scrapy.Spider):
         #permet de specifier l'encodage du fichier en sortie
         'FEED_EXPORT_ENCODING' : 'utf-8',
         # nomme le fichier CSV en sortie
-        'FEED_URI' : 'testVENTESout.csv',
+        'FEED_URI' : 'locationOUT.csv',
         'DEFAULT_REQUEST_HEADERS': {
         'User-agent' : 'Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:62.0) Gecko/20100101 Firefox/62.0',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
         'Accept-Language': 'fr,fr-FR;q=0.8,en-US;q=0.5,en;q=0.3'},
     }
 
-    start_urls = ['https://www.leboncoin.fr/recherche/?category=9&locations=d_75&real_estate_type=1,2,3']
+    start_urls = ['https://www.leboncoin.fr/recherche/?category=10&real_estate_type=1,2']
     allowed_domains = ['leboncoin.fr']
 
 # user id que le site voit, il nous autorise a consulter ses pages tant qu'il ne nous considere pas comme un robot
     ua = 'Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:62.0) Gecko/20100101 Firefox/62.0'
 
     def __init__(self, aDate = pendulum.today()):
-        super(Cities, self).__init__()
+        super(Locations, self).__init__()
         self.aDate = aDate
         self.timestamp = self.aDate.timestamp()
         print("PENDULUM UTC TODAY", self.aDate.today())
         print("PENDULUM UTC TIMESTAMP TODAY ", self.timestamp)
-        #binary = FirefoxBinary('path/to/binary')
-        #self.driver = webdriver.Firefox(firefox_binary=binary)
-
 
     def clean_html(self, html_text):
         soup = BeautifulSoup(html_text, 'html.parser')
@@ -65,12 +59,12 @@ class Cities(scrapy.Spider):
     def parse_page(self, response):
         # recupere le nombre d annonce avec un xpath pour en faire un modulo pour avoir le nombre de pages
         # on importe tout d'abord le CSV qu'on veut (celui avec les éléments qui nous intéressent pour construire l'URL
-         csvcible1 = pd.read_csv('testlocationIN.csv')
+         csvcible1 = pd.read_csv('All_Com_IN_6.csv')
         # ensuite, pour chaque ligne ("NomCommune_CodePostal" dans la colonne qui nous interesse, on demande au programme
         # de compléter l'URL en immisçant au milieu "ligne" et en rajoutant le numéro de page à la fin
          for ligne1 in csvcible1.loc[: ,"ID_URL"].replace("É", "E").replace("' ", "'").replace(" '","'"):
              print(ligne1)
-             urllen = 'https://www.leboncoin.fr/recherche/?category=9&locations=' + ligne1 + '&real_estate_type=1,2'
+             urllen = 'https://www.leboncoin.fr/recherche/?category=10&locations='+ ligne1 + '&real_estate_type=1,2'
              print(urllen)
              yield scrapy.Request(url = urllen, callback= self.parse_nbpages, meta={"ligne1":ligne1})
 
@@ -97,7 +91,7 @@ class Cities(scrapy.Spider):
                     # modifier l'URL (en prenant en compte le "&page=" pour avoir l'extraction sur le nombre de pages voulues)
                     # la boucle permet de mettre un nombre (de n a x) en fin d'URL specifiant le numéro de page qu'on veut scraper
                     # en ajoutant "ligne" on glisse le "NomCommune_CodePostal" récupéré plus haut
-                urls = 'https://www.leboncoin.fr/recherche/?category=9&locations=' + ligne1 + '&real_estate_type=1,2'+'&page='+ str(p)
+                urls = 'https://www.leboncoin.fr/recherche/?category=10&locations=' + ligne1 + '&real_estate_type=1,2'+'&page='+ str(p)
                 yield scrapy.Request(url = urls, callback = self.parse, priority=1, meta= {"ligne1" : ligne1})
 
 
@@ -109,17 +103,10 @@ class Cities(scrapy.Spider):
         for i in extra:
             # on concatene l'identifiant unique de chaque page avec l'URL de base du bon coin
             url2 = "https://www.leboncoin.fr"+i
-            annonce = Annonces()
+            annonce = AnnonceLoc()
             annonce['url'] = url2
             annonce['ID_URL'] = ligne1
-            print(url2)
-
-            # on veut aussi collecter les données en continue, sans faire de doublons: on se base donc sur les url déjà
-            #scrapées : si la nouvelle url == url déjà scrapé alors on ne récupère pas les infos de la nouvelle url
-            '''if url2 not in  :
-                with open('document.csv', 'a') as fd:
-                    fd.write(myCsvRow)
-            '''
+            print(i)
             # pour ensuite aller recuperer
             yield scrapy.Request(url=url2, callback = self.parse_annonce, meta={"annonce":annonce})
 
@@ -130,7 +117,7 @@ class Cities(scrapy.Spider):
         annonce = response.meta['annonce']
 
         # on récupère ici le titre de l'annonce
-        annonce['annoncet'] = ' '.join(response.xpath('//h1[@class ="_1KQme"]/text()').extract()).replace(";"," ")
+        annonce['annoncet'] = ' '.join(response.xpath('//h1[@class="_246DF _2S4wz"]/text()').extract()).replace(";"," ")
 
         # on récupère ici le prix de l'annonce
         annonce['logprix'] = response.xpath('//span[@class ="_1F5u3"]/text()').extract()[0]
@@ -145,8 +132,8 @@ class Cities(scrapy.Spider):
 
         # plus bas on récupère les infos d'une même div contenant à la fois le fait qu'il y ait ou non des honoraires à prendre
         # en compte, la surface du bien, le nombre de pièces du bien, et le type de bien (maison, appartement, etc).
-        # si il y a des honoraires pour agent a prendre en compte
-        annonce['loghonoraires'] = response.xpath('//div[@data-qa-id="criteria_item_fai_included"]/div/div[2]/text()').extract()
+        # si il y a des charges a prendre en compte dans le loyer
+        annonce['logcharges'] = response.xpath('//div[@class="_2B0Bw _1nLtd"]//text()').extract()[1]
 
         # quel type de bien (appartement, maison, terrain)
         annonce['logtypebien'] = response.xpath('//div[@data-qa-id="criteria_item_real_estate_type"]/div/div[2]/text()').extract()
@@ -176,12 +163,11 @@ class Cities(scrapy.Spider):
         annonce['annonced'] = ' '.join(response.xpath('//div[@data-qa-id="adview_date"]/text()').extract())[:10]
 
         # on récupère les données de l'agence immobilière si c'en est une :
-        #if response.xpath('//div[@data-qa-id="storebox_container"'):
+        # if response.xpath('//div[@data-qa-id="storebox_container"'):
         annonce['agenceimmonom'] = response.xpath('//span[@data-qa-id="storebox_title"]/text()').extract()
         annonce['agenceimmoadresse'] = response.xpath('//li[@data-qa-id="storebox_address"]/div/text()').extract()
         annonce['agenceimmosiret'] = ' '.join(response.xpath('//li[@data-qa-id="storebox_siret"]/div/text()').extract())[10:]
         annonce['agenceimmosiren'] = ' '.join(response.xpath('//li[@data-qa-id="storebox_siren"]/div/text()').extract())[10:]
-
         '''
         driver = webdriver.Firefox()
         webdriver.find_element_by_css_selector('class="_2sNbI ObuDQ GXQkc _2xk2l"').click()
@@ -216,8 +202,9 @@ class Cities(scrapy.Spider):
         # et on récupère le code postal de la commune, a ne pas confondre avec le code INSEE de la commune
         annonce['logcodepost'] = str(response.xpath('//div[@data-qa-id="adview_location_informations"]//text()').extract()[2]).zfill(5)
 
-        yield annonce
 
+
+        yield annonce
 
     # On cherche désormais a joindre les données récupérées dans le nouveau tableau par scraping aux données existantes dans
     # le tableau "code_postaux_INSEE.CSV" pour obtenir les codes INSEE et non pas les codes postaux de chaque commune scrapée

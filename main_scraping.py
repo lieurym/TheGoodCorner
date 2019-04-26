@@ -9,7 +9,8 @@ from scrapy.utils.log import configure_logging
 
 #https://doc.scrapy.org/en/latest/topics/practices.html
 
-from boncoin_project.spiders import Cities
+#from boncoin_project.spiders import Cities
+from boncoin_project.spiders import locations
 
 configure_logging()
 runner = CrawlerRunner()
@@ -19,7 +20,8 @@ runner = CrawlerRunner()
 
 @defer.inlineCallbacks
 def crawl():
-    yield runner.crawl(Cities.Cities)
+    #yield runner.crawl(Cities.Cities)
+    yield runner.crawl(locations.Locations)
     #yield runner.crawl(another spyder)
     reactor.stop()
 

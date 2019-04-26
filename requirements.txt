@@ -5,3 +5,4 @@ pendulum
 scrapy
 csvkit
 pandas
+selenium
